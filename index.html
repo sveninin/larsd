@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fun Avoidance Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Arial Black', sans-serif;
+      background: white;
+    }
+    canvas {
+      display: block;
+    }
+    #score {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      font-size: 28px;
+      font-weight: bold;
+      background: #28a745; /* Nice green background */
+      padding: 15px 20px;
+      border-radius: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.2);
+    }
+    #score img {
+      width: 50px;
+      height: 50px;
+      margin-right: 10px;
+    }
+    #score span {
+      color: white;
+      font-size: 24px;
+    }
+    #game-over {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 30px;
+      border-radius: 10px;
+      display: none;
+    }
+    #game-over h1 {
+      font-size: 50px;
+      margin: 0;
+      color: yellow;
+    }
+    #game-over button {
+      margin-top: 20px;
+      padding: 15px 30px;
+      font-size: 22px;
+      font-weight: bold;
+      border: none;
+      background: red;
+      color: white;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: 0.3s;
+    }
+    #game-over button:hover {
+      background: darkred;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">
+    <img id="score-icon" src="" alt="Score Icon">
+    <span id="score-text">0</span>
+  </div>
+  <div id="game-over">
+    <h1>Game Over!</h1>
+    <button onclick="startGame()">Restart</button>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+  
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const gameOverScreen = document.getElementById('game-over');
+    const scoreDisplay = document.getElementById('score-text');
+    const scoreIcon = document.getElementById('score-icon');
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Load images
+    const characterImg = new Image();
+    characterImg.src = 'lars.jpg';
+
+    const obstacleImages = {
+      red: new Image(),
+      blue: new Image(),
+      black: new Image(),
+    };
+
+    obstacleImages.red.src = 'obstacle1.png';
+    obstacleImages.blue.src = 'obstacle2.png';
+    obstacleImages.black.src = 'obstacle3.png';
+
+    // Set the black obstacle as the score icon
+    scoreIcon.src = obstacleImages.black.src;
+
+    // Character
+    const character = {
+      x: canvas.width / 2 - 40,
+      y: canvas.height - 200,
+      width: 80,
+      height: 80,
+      speed: 10,
+    };
+
+    let obstacles = [];
+    let score = 0;
+    let gameOver = false;
+
+    function drawCharacter() {
+      ctx.drawImage(characterImg, character.x, character.y, character.width, character.height);
+    }
+
+    function drawObstacles() {
+      obstacles.forEach(obstacle => {
+        ctx.drawImage(obstacleImages[obstacle.type], obstacle.x, obstacle.y, obstacle.size, obstacle.size);
+      });
+    }
+
+    function updateObstacles() {
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obstacle = obstacles[i];
+        obstacle.y += obstacle.speed;
+
+        // Collision detection
+        if (
+          obstacle.x < character.x + character.width &&
+          obstacle.x + obstacle.size > character.x &&
+          obstacle.y < character.y + character.height &&
+          obstacle.y + obstacle.size > character.y
+        ) {
+          if (obstacle.type === 'black') {
+            score++;
+            scoreDisplay.textContent = score; // Update score count
+            obstacles.splice(i, 1); // Remove the black obstacle
+          } else {
+            endGame();
+            return;
+          }
+        }
+
+        // Remove obstacles that go off screen
+        if (obstacle.y > canvas.height) {
+          obstacles.splice(i, 1);
+        }
+      }
+
+      // Add new obstacles
+      if (Math.random() < 0.03) {
+        const size = 50 + Math.random() * 20;
+        const x = Math.random() * (canvas.width - size);
+        const speed = 3 + Math.random() * 5;
+        const types = ['red', 'blue', 'black'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        obstacles.push({ x, y: -size, size, speed, type });
+      }
+    }
+
+    function endGame() {
+      gameOver = true;
+      gameOverScreen.style.display = 'block';
+    }
+
+    function resetGame() {
+      obstacles = [];
+      score = 0;
+      gameOver = false;
+      character.x = canvas.width / 2 - 40;
+      scoreDisplay.textContent = '0';
+      gameOverScreen.style.display = 'none';
+    }
+
+    function startGame() {
+      resetGame();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function gameLoop() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawCharacter();
+      drawObstacles();
+      updateObstacles();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Event listeners for movement
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' && character.x > 0) {
+        character.x -= character.speed;
+      } else if (e.key === 'ArrowRight' && character.x < canvas.width - character.width) {
+        character.x += character.speed;
+      }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      character.x = e.clientX - character.width / 2;
+      if (character.x < 0) character.x = 0;
+      if (character.x > canvas.width - character.width) character.x = canvas.width - character.width;
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+      character.x = e.touches[0].clientX - character.width / 2;
+      if (character.x < 0) character.x = 0;
+      if (character.x > canvas.width - character.width) character.x = canvas.width - character.width;
+    });
+
+    startGame();
+  </script>
+</body>
+</html>
